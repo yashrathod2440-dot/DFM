@@ -1,0 +1,295 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DFM Analysis Software</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f7fb;
+            color: #1f2937;
+        }
+
+        .header {
+            background: #172554;
+            color: white;
+            padding: 28px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0 0 8px;
+            font-size: 32px;
+        }
+
+        .header p {
+            margin: 0;
+            font-size: 16px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 14px;
+            padding: 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+        }
+
+        .card h2 {
+            margin-top: 0;
+            color: #172554;
+        }
+
+        .upload-area {
+            border: 2px dashed #94a3b8;
+            border-radius: 12px;
+            padding: 35px;
+            text-align: center;
+            background: #f8fafc;
+        }
+
+        input[type="file"] {
+            margin: 20px 0;
+            padding: 10px;
+            width: 100%;
+        }
+
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 13px 28px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        button:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        #status {
+            margin-top: 20px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .result {
+            display: none;
+        }
+
+        .score {
+            text-align: center;
+            font-size: 48px;
+            font-weight: bold;
+            color: #16a34a;
+            margin: 20px 0;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        .stat {
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat strong {
+            display: block;
+            font-size: 26px;
+            margin-bottom: 6px;
+        }
+
+        .download {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 13px 24px;
+            background: #16a34a;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+        }
+
+        .download:hover {
+            background: #15803d;
+        }
+
+        @media (max-width: 700px) {
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>DFM Analysis Software</h1>
+        <p>Design for Manufacturing Analysis</p>
+    </div>
+
+    <div class="container">
+
+        <div class="card">
+            <h2>Upload STEP File</h2>
+
+            <div class="upload-area">
+                <p>Select your STEP / STP CAD file</p>
+
+                <input
+                    type="file"
+                    id="stepFile"
+                    accept=".step,.stp"
+                >
+
+                <br>
+
+                <button id="analyzeButton" onclick="analyzeFile()">
+                    Analyze STEP
+                </button>
+            </div>
+
+            <div id="status"></div>
+        </div>
+
+        <div class="card result" id="resultCard">
+
+            <h2>DFM Analysis Result</h2>
+
+            <div class="score" id="score">--</div>
+
+            <div class="stats">
+                <div class="stat">
+                    <strong id="totalChecks">0</strong>
+                    Total Checks
+                </div>
+
+                <div class="stat">
+                    <strong id="passed">0</strong>
+                    Passed
+                </div>
+
+                <div class="stat">
+                    <strong id="warning">0</strong>
+                    Warnings
+                </div>
+
+                <div class="stat">
+                    <strong id="critical">0</strong>
+                    Critical
+                </div>
+            </div>
+
+            <div style="text-align:center;">
+                <a id="pdfLink" class="download" href="#" target="_blank">
+                    Download PDF Report
+                </a>
+            </div>
+
+        </div>
+
+    </div>
+
+<script>
+
+async function analyzeFile() {
+
+    const fileInput = document.getElementById("stepFile");
+    const button = document.getElementById("analyzeButton");
+    const status = document.getElementById("status");
+    const resultCard = document.getElementById("resultCard");
+
+    if (!fileInput.files.length) {
+        status.innerHTML = "Please select a STEP file.";
+        return;
+    }
+
+    const file = fileInput.files[0];
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    button.disabled = true;
+    button.innerText = "Analyzing...";
+    status.innerHTML = "Analyzing STEP file. Please wait...";
+    resultCard.style.display = "none";
+
+    try {
+
+        const response = await fetch("/analyze-step", {
+            method: "POST",
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error("Analysis failed");
+        }
+
+        const data = await response.json();
+
+        const dfm = data.dfm_score;
+
+        document.getElementById("score").innerText =
+            dfm.score + "/100";
+
+        document.getElementById("totalChecks").innerText =
+            dfm.total_checks;
+
+        document.getElementById("passed").innerText =
+            dfm.passed;
+
+        document.getElementById("warning").innerText =
+            dfm.warning;
+
+        document.getElementById("critical").innerText =
+            dfm.critical;
+
+        document.getElementById("pdfLink").href =
+            "/download-report/" + encodeURIComponent(
+                data.pdf_report.filename
+            );
+
+        resultCard.style.display = "block";
+
+        status.innerHTML = "Analysis completed successfully.";
+
+    } catch (error) {
+
+        status.innerHTML =
+            "Error: " + error.message;
+
+    } finally {
+
+        button.disabled = false;
+        button.innerText = "Analyze STEP";
+    }
+}
+
+</script>
+
+</body>
+</html>
